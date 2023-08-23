@@ -26,9 +26,7 @@ def expand_variants(entry: str, options):
     if 'pTF' in options:
         try:
             (base, signature) = entry.split(':')
-            variants = [base + '_p:' + signature]
-            variants.extend([entry + v for v in ('T', 'F', 'TF')])
-            return variants
+            return [f'{base}_p:{signature}', *[entry + v for v in ('T', 'F', 'TF')]]
         except ValueError as e:
             print(f'Wrong format for {entry} with {options}')
             print('\t', e)

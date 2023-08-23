@@ -15,8 +15,6 @@ UNIMATHSYMBOLS = CWD.joinpath('unimathsymbols.txt').resolve()
 COMMANDS_FILE = CWD.joinpath('../data/commands.json').resolve()
 ENVS_FILE = CWD.joinpath('../data/environments.json').resolve()
 OUT_DIR = CWD.joinpath('../data/packages').resolve()
-INFILES = None
-
 parser = argparse.ArgumentParser()
 parser.add_argument('-o', '--outdir', help=f'Directory where to write the JSON files. Default is {OUT_DIR}', type=str)
 parser.add_argument('-i', '--infile', help='Files to process. Default is the content from cwl.list and cwl/ folder', type=str, nargs='+')
@@ -27,19 +25,18 @@ if args.outdir:
     if not OUT_DIR.is_dir():
         print(f'The path passed to --outdir is not a directory: {args.outdir}')
         sys.exit(0)
-if args.infile:
-    INFILES = args.infile
+INFILES = args.infile if args.infile else None
 
 
 def get_cwl_files() -> List[Path]:
     """ Get the list of cwl files from github if not already available on disk."""
-    files = []
     with open('cwl.list', 'r') as l:
-        candidates = l.read().splitlines() 
-    for f in CWD.joinpath('cwl').iterdir():
-        if f.suffix == '.cwl' and f.name in candidates:
-            files.append(f)
-    return files
+        candidates = l.read().splitlines()
+    return [
+        f
+        for f in CWD.joinpath('cwl').iterdir()
+        if f.suffix == '.cwl' and f.name in candidates
+    ]
 
 def dump_dict(dictionnary, out_json):
     if dictionnary != {}:
@@ -57,19 +54,23 @@ def parse_cwl_files(cwl_files):
         if cwl_file.name in FILES_TO_REMOVE_SPACES_IN:
             remove_spaces = True
         pkg = cwlIntel.parse_cwl_file(cwl_file, remove_spaces)
-        json.dump(dataclasses.asdict(pkg, dict_factory=lambda x: {k: v for (k, v) in x if v is not None}),
-                  open(OUT_DIR.joinpath(change_json_name(cwl_file.stem) + '.json'), 'w', encoding='utf8'), indent=2, ensure_ascii=False)
+        json.dump(
+            dataclasses.asdict(
+                pkg,
+                dict_factory=lambda x: {k: v for (k, v) in x if v is not None},
+            ),
+            open(
+                OUT_DIR.joinpath(f'{change_json_name(cwl_file.stem)}.json'),
+                'w',
+                encoding='utf8',
+            ),
+            indent=2,
+            ensure_ascii=False,
+        )
 
 def change_json_name(file_stem):
-    if (file_stem in ['yathesis']):
-        return 'class-' + file_stem
-    return file_stem
+    return f'class-{file_stem}' if (file_stem in ['yathesis']) else file_stem
 
 if __name__ == '__main__':
-    if INFILES is None:
-        cwl_files = get_cwl_files()
-    else:
-        # Convert to an array of Path objects
-        cwl_files = [Path(f) for f in INFILES]
-
+    cwl_files = get_cwl_files() if INFILES is None else [Path(f) for f in INFILES]
     parse_cwl_files(cwl_files)

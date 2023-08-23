@@ -44,7 +44,7 @@ class CtanPkg:
             try:
                 self.extra_packages = json.load(open(extra_packages_file))
             except:
-                print('Cannot read {}'.format(extra_packages_file))
+                print(f'Cannot read {extra_packages_file}')
 
 
     def _build_ctan_dict(self, ctan_source):
@@ -52,13 +52,14 @@ class CtanPkg:
             print('Dowloading CTAN package list...')
             ctan_list = requests.get(ctan_source).json()
         except:
-            print('Cannot get package list from {}'.format(ctan_source))
+            print(f'Cannot get package list from {ctan_source}')
             return
         for x in ctan_list:
-            self.ctan_dict[x['key']] = {}
-            self.ctan_dict[x['key']]['command'] = x['key']
-            self.ctan_dict[x['key']]['documentation'] = 'https://ctan.org/pkg/' + x['key']
-            self.ctan_dict[x['key']]['detail'] = x['caption']
+            self.ctan_dict[x['key']] = {
+                'command': x['key'],
+                'documentation': 'https://ctan.org/pkg/' + x['key'],
+                'detail': x['caption'],
+            }
 
 
     def _read_tlpdb(self, tlpdb_url):
@@ -68,7 +69,7 @@ class CtanPkg:
             r.encoding = 'utf-8' # No encoding is present in the response as it is ASCII, we have to enforce it to get strings and not bytes.
             self.tl_packages, self.tl_packages_index_map = parse_tlpdb.packages_from_tlpdb(r.iter_lines(decode_unicode=True))
         except:
-            print('Cannot retrieve the tlpdb file from {}'.format(tlpdb_url))
+            print(f'Cannot retrieve the tlpdb file from {tlpdb_url}')
             return
         self.tl_all_files = [Path(f).name for pkg in self.tl_packages for f in pkg.runfiles if Path(f).suffix in ['.sty', '.def', '.cls'] ]
 
@@ -79,17 +80,16 @@ class CtanPkg:
 
         :return a filename without the .sty extension or None
         """
-        styname = pkgname + '.sty'
+        styname = f'{pkgname}.sty'
         if styname in self.tl_all_files:
             return pkgname
         if pkgname in self.tl_packages_index_map:
             files = [Path(f) for f in self.tl_packages[self.tl_packages_index_map[pkgname]].runfiles]
-            if pkgname + '.sty' in files:
+            if f'{pkgname}.sty' in files:
                 return pkgname
-            else:
-                for f in files:
-                    if f.name.lower() == pkgname + '.sty':
-                        return f.stem
+            for f in files:
+                if f.name.lower() == f'{pkgname}.sty':
+                    return f.stem
         return None
 
 
@@ -121,10 +121,11 @@ class CtanPkg:
             if base in self.ctan_dict:
                 detail = self.ctan_dict[base]['detail']
                 documentation = self.ctan_dict[base]['documentation']
-            class_data[base] = {}
-            class_data[base]['command'] = base
-            class_data[base]['detail'] = detail
-            class_data[base]['documentation'] = documentation
+            class_data[base] = {
+                'command': base,
+                'detail': detail,
+                'documentation': documentation,
+            }
         return class_data
 
 

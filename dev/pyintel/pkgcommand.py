@@ -109,19 +109,14 @@ class PlaceHolder:
         self.keepDelimiters = trueOrFalse
 
     def isToSkip(self, delimiters: str, string: str):
-        if delimiters == '()' and string in ['s', 'en anglais', 'en français']:
-            return True
-        else:
-            return False
+        return delimiters == '()' and string in {'s', 'en anglais', 'en français'}
 
     def sub(self, matchObject) -> str:
         if self.isToSkip(matchObject.group(1) + matchObject.group(3), matchObject.group(2)):
             return matchObject.group(1) + matchObject.group(2) + matchObject.group(3)
 
         self.count += 1
-        name = ''
-        if self.usePlaceHolders:
-            name = ':' + matchObject.group(2)
+        name = f':{matchObject.group(2)}' if self.usePlaceHolders else ''
         if self.keepDelimiters:
             return matchObject.group(1) + '${' + str(self.count) + name + '}' + matchObject.group(3)
         else:
@@ -175,10 +170,8 @@ class CwlIntel:
                 continue
             line = line.strip()
             arry = line.split('^')
-            cmds.append(re.sub(r'^\\', '', arry[2]))
-            cmds.append(re.sub(r'^\\', '', arry[3]))
-            for m in re.finditer(r'= \\(\w+)[ ,]', arry[-1]):
-                cmds.append(m.group(1))
+            cmds.extend((re.sub(r'^\\', '', arry[2]), re.sub(r'^\\', '', arry[3])))
+            cmds.extend(m.group(1) for m in re.finditer(r'= \\(\w+)[ ,]', arry[-1]))
             doc = re.sub(r'\s*[=#xt]\s*\\\w+(\{.*?\})?\s*(\(.*?\))?\s*,', '', arry[-1])
             doc = re.sub(r'\s*[=#xt]\s*\S+\s*,', '', doc)
             doc = doc.strip()
@@ -206,7 +199,7 @@ class CwlIntel:
         pkg = Pkg(includes={}, cmds={}, envs={}, options=[], keyvals=[])
         if file_path.name == 'caption.cwl':
             lines = apply_caption_tweaks(lines)
-        
+
         cwl_keyval = None
         cwl_option = None
         for line in lines:
@@ -241,10 +234,7 @@ class CwlIntel:
                 else:
                     name = match[1]
                 name = re.sub(r'\<[a-zA-Z\s]*\>', '<>', name)
-                if remove_spaces:
-                    name = name.replace(' ', '')
-                else:
-                    name = name.strip()
+                name = name.replace(' ', '') if remove_spaces else name.strip()
                 # The name field can only contain letters, `{`, `}`, `[`, `]` and `*`.
                 # https://github.com/James-Yu/LaTeX-Workshop/issues/3264#issuecomment-1138733921
                 if re.search(r'[^A-Za-z0-9\[\]\{\}\<\>\*_^:\s]', name) is not None or '%' in name:
@@ -258,7 +248,7 @@ class CwlIntel:
                     keyvalpos=None)
             elif line.startswith('\\end{'):         # '\end{minted}'
                 continue
-            elif line.startswith('\\'):             # '\inputminted[options%keyvals]{language}{file}#i'
+            elif line.startswith('\\'):     # '\inputminted[options%keyvals]{language}{file}#i'
                 if ((re.match(r'\\left[^a-zA-Z]', line) is not None and '\\right' not in line) or
                     (re.match(r'\\right[^a-zA-Z]', line))): # Special cases in latex-document
                     continue
@@ -272,10 +262,7 @@ class CwlIntel:
                 name = re.sub(r'\([^\{\}\[\]\(\)]*\)', r'()', name)
                 name = re.sub(r'\<[a-zA-Z\s]*\>', '<>', name)
                 name = re.sub(r'\|.*?\|', '', name) # Remove |%<code%>| from '\mintinline[%<options%>]{%<language%>}|%<code%>|#M'
-                if remove_spaces:
-                    name = name.replace(' ', '')
-                else:
-                    name = name.strip()
+                name = name.replace(' ', '') if remove_spaces else name.strip()
                 # The name field can only contain letters, `{`, `}`, `[`, `]` and `*`.
                 # https://github.com/James-Yu/LaTeX-Workshop/issues/3264#issuecomment-1138733921
                 if re.search(r'[^A-Za-z\[\]\{\}\<\>\*_^:\s]', name) is not None:
@@ -336,7 +323,7 @@ class CwlIntel:
                                 pkg.cmds[pkgcmd].keyvalpos = len(re.findall(r'\[\]|\(\)|<>|{}', re.sub(r'\${.*?}', '', pkg.cmds[pkgcmd].snippet[:haskeyvals.start()])))
                             pkg.cmds[pkgcmd].keyvalindex = pkg.cmds[pkgcmd].keyvalindex or []
                             pkg.cmds[pkgcmd].keyvalindex.append(match[1])
-        
+
         for pkgcmd in pkg.cmds:
             if pkg.cmds[pkgcmd].keyvalindex is None:
                 continue
@@ -351,7 +338,7 @@ class CwlIntel:
             if not found:
                 pkg.keyvals.append(pkg.cmds[pkgcmd].keyvalindex)
                 pkg.cmds[pkgcmd].keyvalindex = len(pkg.keyvals) - 1
-        
+
         for pkgenv in pkg.envs:
             if pkg.envs[pkgenv].keyvalindex is None:
                 continue

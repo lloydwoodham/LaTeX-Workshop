@@ -120,8 +120,7 @@ class TLPackage(object):
         you don't see one in the plist, it may just need to be added as a line here.
         
         """
-        kv = {}
-        kv["name"] = self.name
+        kv = {"name": self.name}
         if self.category: kv["category"] = self.category
         if self.revision: kv["revision"] = self.revision
         if self.shortdesc: kv["shortDescription"] = self.shortdesc
@@ -170,37 +169,37 @@ def _attributes_from_line(line):
 
         if c == "=":
             
-            if key == None:
-                assert quote_count == 0, "possibly quoted key in line %s" % (line)
+            if key is None:
+                assert quote_count == 0, f"possibly quoted key in line {line}"
                 key = "".join(chars)
                 chars = []
             else:
                 chars.append(c)
-        
+
         elif c == "\"":
-            
+
             quote_count += 1
-            
+
         elif c == " ":
             
             # if quotes are matched, we've reached the end of a key-value pair
             if quote_count % 2 == 0:
-                assert key != None, "no key found for %s" % (line)
-                assert key not in attrs, "key already assigned for line %s" % (line)
+                assert key != None, f"no key found for {line}"
+                assert key not in attrs, f"key already assigned for line {line}"
                 attrs[key] = "".join(chars)
-                
+
                 # reset parser state
                 chars = []
                 key = None
                 quote_count = 0
             else:
                 chars.append(c)
-                
+
         else:
             chars.append(c)
-    
-    assert key != None, "no key found for %s" % (line)
-    assert len(chars), "no values found for line %s" % (line)
+
+    assert key != None, f"no key found for {line}"
+    assert len(chars), f"no values found for line {line}"
     attrs[key] = "".join(chars)
     return attrs
 
@@ -225,22 +224,22 @@ def packages_from_tlpdb(flat_tlpdb, allow_partial=False):
     last_arch = None
 
     for line_idx, line in enumerate(flat_tlpdb):
-    
+
         # seems to be absent in TL 2020 (not in stderr?)
         if line_idx == 0 and line.startswith("location-url\t"):
             TLPackage.mirror = line[len("location-url\t"):].strip()
             continue
-            
+
         # comment lines; supported, but not currently used
         if line.startswith("#"):
             continue
-                
+
         line = line.strip("\r\n")
-    
+
         if len(line) == 0:
             all_packages.append(package)
             index_map[package.name] = package_index
-            
+
             package_index += 1
             package = None
             last_key = None
@@ -250,16 +249,16 @@ def packages_from_tlpdb(flat_tlpdb, allow_partial=False):
             try:
                 # the first space token is a delimiter
                 key, ignored, value = line.partition(" ")
-                            
-                if package == None:
+
+                if package is None:
                     assert key == "name", "first line must be a name"
                     package = TLPackage()
-        
+
                 line_has_key = True
                 if len(key) == 0:
                     key = last_key
                     line_has_key = False
-                        
+
                 if key == "name":
                     package.name = value
                 elif key == "category":
@@ -274,11 +273,11 @@ def packages_from_tlpdb(flat_tlpdb, allow_partial=False):
                     else:
                         package.shortdesc = value
                 elif key == "longdesc":
-                    oldvalue = "" if package.longdesc == None else package.longdesc
+                    oldvalue = "" if package.longdesc is None else package.longdesc
                     if python_major_version < 3:
-                        package.longdesc = oldvalue + " " + value.decode("utf-8")
+                        package.longdesc = f"{oldvalue} " + value.decode("utf-8")
                     else:
-                        package.longdesc = oldvalue + " " + value
+                        package.longdesc = f"{oldvalue} {value}"
                 elif key == "depend":
                     package.depends.append(value)
                 elif key == "catalogue":
@@ -289,16 +288,16 @@ def packages_from_tlpdb(flat_tlpdb, allow_partial=False):
                 elif key == "srcfiles":
                     if line_has_key:
                         attrs = _attributes_from_line(value)
-                        assert "size" in attrs, "missing size for %s : %s" % (package.name, key)
+                        assert "size" in attrs, f"missing size for {package.name} : {key}"
                         package.srcsize = int(attrs["size"])
                     else:
                         package.srcfiles.append(value)
                 elif key == "binfiles":
                     if line_has_key:
                         attrs = _attributes_from_line(value)
-                        assert "arch" in attrs, "missing arch for %s : %s" % (package.name, key)
+                        assert "arch" in attrs, f"missing arch for {package.name} : {key}"
                         last_arch = attrs["arch"]
-                        assert "size" in attrs, "missing size for %s : %s" % (package.name, key)
+                        assert "size" in attrs, f"missing size for {package.name} : {key}"
                         package.binsize[last_arch] = int(attrs["size"])
                     else:
                         oldvalue = package.binfiles[last_arch] if last_arch in package.binfiles else []
@@ -313,7 +312,7 @@ def packages_from_tlpdb(flat_tlpdb, allow_partial=False):
                     try:
                         if line_has_key:
                             attrs = _attributes_from_line(value)
-                            assert "size" in attrs, "missing size for %s : %s" % (package.name, key)
+                            assert "size" in attrs, f"missing size for {package.name} : {key}"
                             package.docsize = int(attrs["size"])
                         else:
                             values = value.split(" ")
@@ -325,7 +324,7 @@ def packages_from_tlpdb(flat_tlpdb, allow_partial=False):
                 elif key == "runfiles":
                     if line_has_key:
                         attrs = _attributes_from_line(value)
-                        assert "size" in attrs, "missing size for %s : %s" % (package.name, key)
+                        assert "size" in attrs, f"missing size for {package.name} : {key}"
                         package.runsize = int(attrs["size"])
                     else:
                         package.runfiles.append(value)
@@ -336,15 +335,14 @@ def packages_from_tlpdb(flat_tlpdb, allow_partial=False):
                 else:
                     package.add_pair(key, value)
                     #assert False, "unhandled line %s" % (line)
-                
+
                 last_key = key
             except Exception as e:
-                if allow_partial:
-                    sys.stderr.write("parsed up to junk line \"%s\"\n" % (line))
-                    break
-                else:
+                if not allow_partial:
                     raise e
 
+                sys.stderr.write("parsed up to junk line \"%s\"\n" % (line))
+                break
     return all_packages, index_map
     
 def _save_as_sqlite(packages, absolute_path):
@@ -366,7 +364,7 @@ def _save_as_sqlite(packages, absolute_path):
     import sqlite3
     import os
     import errno
-    
+
     def _adapt_list(lst):
         if lst is None or len(lst) == 0:
             return None
@@ -374,7 +372,7 @@ def _save_as_sqlite(packages, absolute_path):
 
     sqlite3.register_adapter(list, _adapt_list)
     sqlite3.register_adapter(tuple, _adapt_list)
-    
+
     # plistlib will overwrite the previous file, so do the same with sqlite
     # instead of adding rows
     try:
@@ -382,14 +380,14 @@ def _save_as_sqlite(packages, absolute_path):
     except OSError as e:
         if e.errno != errno.ENOENT:
             raise e
-            
-    assert os.path.exists(absolute_path) == False, "File exists: %s" % (absolute_path)
+
+    assert os.path.exists(absolute_path) == False, f"File exists: {absolute_path}"
     conn = sqlite3.connect(absolute_path, detect_types=sqlite3.PARSE_DECLTYPES)
     c = conn.cursor()
     c.execute("""CREATE table packages (name text, category text, revision real, shortdesc text, longdesc text, runfiles blob, srcfiles blob, docfiles blob)""")
     for pkg in all_packages:
         pkg.insert_in_packages(conn)
-    
+
     conn.close()
     
 def _save_as_plist(packages, path_or_file):
@@ -409,10 +407,7 @@ def _save_as_plist(packages, path_or_file):
     # only for remote tlpdb
     if TLPackage.mirror:
         plist["mirror"] = TLPackage.mirror
-    plist["packages"] = []
-    for pkg in all_packages:
-        plist["packages"].append(pkg.dictionary_value())
-    
+    plist["packages"] = [pkg.dictionary_value() for pkg in all_packages]
     if python_major_version < 3:
         plistlib.writePlist(plist, path_or_file)
     else:
@@ -424,7 +419,7 @@ def _save_as_plist(packages, path_or_file):
             bytes_output = plistlib.dumps(plist)
         except Exception as exc:
             bytes_output = plistlib.writePlistToBytes(plist)
-            
+
         str_output = bytes_output.decode("UTF-8")
         if path_or_file == sys.stdout:
             sys.stdout.write(str_output)

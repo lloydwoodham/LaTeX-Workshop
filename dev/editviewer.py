@@ -2,12 +2,22 @@ import os
 import argparse
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-w', '--web', help=f'Path to pdf.js distributed web/ folder, end without `/`', type=str)
-parser.add_argument('-v', '--viewer', help=f'Path to extension viewer/ folder, end without `/`', type=str)
+parser.add_argument(
+    '-w',
+    '--web',
+    help='Path to pdf.js distributed web/ folder, end without `/`',
+    type=str,
+)
+parser.add_argument(
+    '-v',
+    '--viewer',
+    help='Path to extension viewer/ folder, end without `/`',
+    type=str,
+)
 args = parser.parse_args()
 
-with open(args.web + '/viewer.html', 'rt') as fin:
-    with open(args.viewer + '/viewer.html', 'wt') as fout:
+with open(f'{args.web}/viewer.html', 'rt') as fin:
+    with open(f'{args.viewer}/viewer.html', 'wt') as fout:
         for line in fin:
             fout.write(
                 line.replace('''<title>PDF.js viewer</title>''', '''<meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'none'; connect-src 'self' ws://127.0.0.1:*; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:;">\n    <title>PDF.js viewer</title>''')
@@ -16,8 +26,8 @@ with open(args.web + '/viewer.html', 'rt') as fin:
                     .replace('''<script src="viewer.js"></script>''', '''<script src="out/viewer/latexworkshop.js" type="module"></script>''')
             )
 
-with open(args.web + '/viewer.js', 'rt') as fin:
-    with open(args.viewer + '/viewer.js', 'wt') as fout:
+with open(f'{args.web}/viewer.js', 'rt') as fin:
+    with open(f'{args.viewer}/viewer.js', 'wt') as fout:
         for line in fin:
             fout.write(
                 line.replace('''this.setTitle(title);''', '''// this.setTitle(title);''')
